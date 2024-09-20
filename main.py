@@ -2,6 +2,8 @@ import os
 os.environ['FLASK_APP'] = 'main.py'
 
 import uuid
+import json
+import base64
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_file, abort
 from werkzeug.utils import secure_filename
 from google.cloud import vision
@@ -13,6 +15,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
 from flask_migrate import Migrate
 import logging
+import requests
+from google.oauth2 import service_account
+from google.auth.transport.requests import Request
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -46,6 +51,10 @@ vision_client = vision.ImageAnnotatorClient()
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
+# Get Google Cloud project ID from credentials
+google_cloud_credentials = json.loads(os.environ['GOOGLE_CLOUD_CREDENTIALS'])
+google_cloud_project_id = google_cloud_credentials['project_id']
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -76,43 +85,41 @@ def allowed_file(filename):
 def index():
     return render_template('index.html')
 
-def generate_caption(response):
-    objects = response.localized_object_annotations
-    faces = response.face_annotations
-    labels = response.label_annotations
-
-    caption = []
-
-    # Describe main objects
-    if objects:
-        main_objects = [obj.name.lower() for obj in objects[:3]]
-        caption.append(f"A {'and '.join(main_objects)}")
-
-    # Describe people and expressions
-    if faces:
-        num_people = len(faces)
-        if num_people == 1:
-            caption.append("a person")
-        elif num_people > 1:
-            caption.append(f"{num_people} people")
-        
-        emotions = [emotion for face in faces for emotion, likelihood in [
-            ('smiling', face.joy_likelihood),
-            ('sad', face.sorrow_likelihood),
-            ('angry', face.anger_likelihood),
-            ('surprised', face.surprise_likelihood)
-        ] if likelihood >= vision.Likelihood.LIKELY]
-        
-        if emotions:
-            caption.append(f"who {'and '.join(emotions)}")
-
-    # Add context from labels
-    if labels:
-        context = [label.description.lower() for label in labels[:3] if label.description.lower() not in ' '.join(caption).lower()]
-        if context:
-            caption.append(f"in a {' and '.join(context)} setting")
-
-    return ' '.join(caption).capitalize() + '.'
+def generate_caption(image_content):
+    url = f"https://us-central1-aiplatform.googleapis.com/v1/projects/{google_cloud_project_id}/locations/us-central1/publishers/google/models/imagetext:predict"
+    
+    credentials = service_account.Credentials.from_service_account_info(
+        info=json.loads(os.environ['GOOGLE_CLOUD_CREDENTIALS']),
+        scopes=['https://www.googleapis.com/auth/cloud-platform']
+    )
+    credentials.refresh(Request())
+    
+    headers = {
+        "Authorization": f"Bearer {credentials.token}",
+        "Content-Type": "application/json"
+    }
+    
+    data = {
+        "instances": [
+            {
+                "image": {
+                    "bytesBase64Encoded": base64.b64encode(image_content).decode('utf-8')
+                }
+            }
+        ],
+        "parameters": {
+            "sampleCount": 1,
+            "language": "en"
+        }
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    
+    if response.status_code == 200:
+        result = response.json()
+        return result['predictions'][0]['caption']
+    else:
+        raise Exception(f"Error calling Imagen API: {response.text}")
 
 @app.route('/upload', methods=['POST'])
 @login_required
@@ -131,6 +138,9 @@ def upload_file():
         try:
             file_data = file.read()
             
+            # Generate caption using Imagen API
+            caption = generate_caption(file_data)
+            
             # Analyze the image
             image = vision.Image(content=file_data)
             
@@ -146,9 +156,6 @@ def upload_file():
                              {'type_': vision.Feature.Type.FACE_DETECTION}],
                 'image_context': image_context
             })
-
-            # Generate caption
-            caption = generate_caption(response)
 
             # Generate a comprehensive description
             description = f"Image Caption: {caption}\n\n"
