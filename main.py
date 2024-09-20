@@ -6,6 +6,8 @@ import io
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import create_engine
+from sqlalchemy.pool import QueuePool
 
 app = Flask(__name__)
 app.config.from_object('config')
@@ -17,10 +19,15 @@ db_host = os.environ.get('PGHOST')
 db_port = os.environ.get('PGPORT')
 db_name = os.environ.get('PGDATABASE')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}?sslmode=require'
 app.config['SECRET_KEY'] = os.urandom(24)
 
+# Create engine with connection pool
+engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], poolclass=QueuePool, pool_size=10, max_overflow=20)
+
+# Initialize SQLAlchemy
 db = SQLAlchemy(app)
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -109,23 +116,28 @@ def register():
             flash('All fields are required.', 'error')
             return redirect(url_for('register'))
         
-        user = User.query.filter_by(username=username).first()
-        if user:
-            flash('Username already exists.', 'error')
+        try:
+            user = User.query.filter_by(username=username).first()
+            if user:
+                flash('Username already exists.', 'error')
+                return redirect(url_for('register'))
+            
+            user = User.query.filter_by(email=email).first()
+            if user:
+                flash('Email already exists.', 'error')
+                return redirect(url_for('register'))
+            
+            new_user = User(username=username, email=email)
+            new_user.set_password(password)
+            db.session.add(new_user)
+            db.session.commit()
+            
+            flash('Registration successful. Please log in.', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'An error occurred during registration: {str(e)}', 'error')
             return redirect(url_for('register'))
-        
-        user = User.query.filter_by(email=email).first()
-        if user:
-            flash('Email already exists.', 'error')
-            return redirect(url_for('register'))
-        
-        new_user = User(username=username, email=email)
-        new_user.set_password(password)
-        db.session.add(new_user)
-        db.session.commit()
-        
-        flash('Registration successful. Please log in.', 'success')
-        return redirect(url_for('login'))
     
     return render_template('register.html')
 
@@ -158,7 +170,14 @@ def history():
     analyses = Analysis.query.filter_by(user_id=current_user.id).all()
     return render_template('history.html', analyses=analyses)
 
-if __name__ == '__main__':
+def init_db():
     with app.app_context():
         db.create_all()
-    app.run(host='0.0.0.0', port=5000)
+        print("Database tables created.")
+
+if __name__ == '__main__':
+    try:
+        init_db()
+        app.run(host='0.0.0.0', port=5000)
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
