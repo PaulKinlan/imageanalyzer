@@ -120,8 +120,24 @@ def upload_file():
             face_response = vision_client.face_detection(image=image)
             faces = face_response.face_annotations
 
+            # Perform image captioning
+            caption_response = vision_client.image_annotator.annotate_image({
+                'image': {'content': file_data},
+                'features': [{'type_': vision.Feature.Type.IMAGE_PROPERTIES},
+                             {'type_': vision.Feature.Type.LABEL_DETECTION},
+                             {'type_': vision.Feature.Type.OBJECT_LOCALIZATION},
+                             {'type_': vision.Feature.Type.FACE_DETECTION},
+                             {'type_': vision.Feature.Type.SAFE_SEARCH_DETECTION},
+                             {'type_': vision.Feature.Type.WEB_DETECTION},
+                             {'type_': vision.Feature.Type.TEXT_DETECTION}]
+            })
+
+            # Extract the caption
+            caption = caption_response.full_text_annotation.text if caption_response.full_text_annotation else "No caption generated."
+
             # Generate a comprehensive description
-            description = f"This image contains: {', '.join([label.description for label in labels[:5]])}"
+            description = f"Image Caption: {caption}\n\n"
+            description += f"This image contains: {', '.join([label.description for label in labels[:5]])}"
             
             # Add color information
             if properties.dominant_colors:

@@ -61,10 +61,14 @@ function previewFile(file, index) {
         img.src = reader.result;
         img.classList.add('w-full', 'h-32', 'object-cover', 'rounded', 'mb-2');
         
+        const captionDiv = document.createElement('div');
+        captionDiv.classList.add('image-caption', 'text-sm', 'font-bold', 'mb-2');
+        
         const analysisDiv = document.createElement('div');
         analysisDiv.classList.add('analysis-result', 'text-sm');
         
         container.appendChild(img);
+        container.appendChild(captionDiv);
         container.appendChild(analysisDiv);
         gallery.appendChild(container);
     }
@@ -115,14 +119,19 @@ function uploadFile(file, index) {
 function displayResult(fileName, analysisResult, index) {
     const container = gallery.querySelector(`[data-index="${index}"]`);
     if (container) {
+        const captionDiv = container.querySelector('.image-caption');
         const analysisDiv = container.querySelector('.analysis-result');
         
         // Split the analysis result into sections
-        const sections = analysisResult.split('\n');
+        const sections = analysisResult.split('\n\n');
         
-        // Create a formatted HTML string
+        // Extract the caption
+        const caption = sections[0].replace('Image Caption: ', '');
+        captionDiv.textContent = caption;
+        
+        // Create a formatted HTML string for the rest of the analysis
         let formattedResult = `<p class="font-bold">${fileName}</p>`;
-        sections.forEach(section => {
+        sections.slice(1).forEach(section => {
             formattedResult += `<p>${section}</p>`;
         });
         
