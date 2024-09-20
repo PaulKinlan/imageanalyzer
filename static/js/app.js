@@ -42,6 +42,7 @@ function handleDrop(e) {
 
 function handleFiles(event) {
     const files = event.target ? event.target.files : event;
+    gallery.innerHTML = ''; // Clear the gallery
     [...files].forEach((file, index) => {
         uploadFile(file, index);
         previewFile(file, index);
@@ -54,6 +55,7 @@ function previewFile(file, index) {
     reader.onloadend = function() {
         const container = document.createElement('div');
         container.classList.add('image-container', 'mb-4', 'p-4', 'bg-white', 'rounded', 'shadow');
+        container.dataset.index = index; // Add data attribute with index
         
         const img = document.createElement('img');
         img.src = reader.result;
@@ -111,9 +113,9 @@ function uploadFile(file, index) {
 }
 
 function displayResult(fileName, analysisResult, index) {
-    const containers = document.querySelectorAll('.image-container');
-    if (containers[index]) {
-        const analysisDiv = containers[index].querySelector('.analysis-result');
+    const container = gallery.querySelector(`[data-index="${index}"]`);
+    if (container) {
+        const analysisDiv = container.querySelector('.analysis-result');
         
         // Split the analysis result into sections
         const sections = analysisResult.split('\n');
