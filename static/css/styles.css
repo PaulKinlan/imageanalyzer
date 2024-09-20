@@ -1,0 +1,12 @@
+/* Additional custom styles can be added here if needed */
+#drop-area.highlight {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+#gallery img {
+    max-width: 100%;
+    max-height: 300px;
+    margin-top: 1rem;
+    border-radius: 0.5rem;
+}
