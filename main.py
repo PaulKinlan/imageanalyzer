@@ -96,56 +96,34 @@ def upload_file():
             # Analyze the image
             image = vision.Image(content=file_data)
             
-            # Perform label detection
-            label_response = vision_client.label_detection(image=image)
-            labels = label_response.label_annotations
-
-            # Perform image properties analysis
-            properties_response = vision_client.image_properties(image=image)
-            properties = properties_response.image_properties_annotation
-
-            # Perform safe search detection
-            safe_search_response = vision_client.safe_search_detection(image=image)
-            safe_search = safe_search_response.safe_search_annotation
-
-            # Perform web detection
-            web_response = vision_client.web_detection(image=image)
-            web_detection = web_response.web_detection
-
-            # Perform object detection
-            object_response = vision_client.object_localization(image=image)
-            objects = object_response.localized_object_annotations
-
-            # Perform facial recognition
-            face_response = vision_client.face_detection(image=image)
-            faces = face_response.face_annotations
-
             # Perform image captioning
-            caption_response = vision_client.image_annotator.annotate_image({
-                'image': {'content': file_data},
-                'features': [{'type_': vision.Feature.Type.IMAGE_PROPERTIES},
-                             {'type_': vision.Feature.Type.LABEL_DETECTION},
-                             {'type_': vision.Feature.Type.OBJECT_LOCALIZATION},
-                             {'type_': vision.Feature.Type.FACE_DETECTION},
+            image_context = vision.ImageContext(language_hints=['en'])
+            response = vision_client.annotate_image({
+                'image': image,
+                'features': [{'type_': vision.Feature.Type.LABEL_DETECTION},
+                             {'type_': vision.Feature.Type.IMAGE_PROPERTIES},
                              {'type_': vision.Feature.Type.SAFE_SEARCH_DETECTION},
                              {'type_': vision.Feature.Type.WEB_DETECTION},
-                             {'type_': vision.Feature.Type.TEXT_DETECTION}]
+                             {'type_': vision.Feature.Type.OBJECT_LOCALIZATION},
+                             {'type_': vision.Feature.Type.FACE_DETECTION}],
+                'image_context': image_context
             })
 
-            # Extract the caption
-            caption = caption_response.full_text_annotation.text if caption_response.full_text_annotation else "No caption generated."
+            # Extract the caption (using label detection as a simple form of captioning)
+            caption = ', '.join([label.description for label in response.label_annotations[:3]])
 
             # Generate a comprehensive description
             description = f"Image Caption: {caption}\n\n"
-            description += f"This image contains: {', '.join([label.description for label in labels[:5]])}"
+            description += f"This image contains: {', '.join([label.description for label in response.label_annotations[:5]])}"
             
             # Add color information
-            if properties.dominant_colors:
+            if response.image_properties_annotation.dominant_colors:
                 colors = [f"rgb({int(color.color.red)},{int(color.color.green)},{int(color.color.blue)})" 
-                          for color in properties.dominant_colors.colors[:3]]
+                          for color in response.image_properties_annotation.dominant_colors.colors[:3]]
                 description += f"\nDominant colors: {', '.join(colors)}"
 
             # Add safe search information
+            safe_search = response.safe_search_annotation
             safe_search_results = [f"{attr}: {getattr(safe_search, attr).name}"
                                    for attr in ['adult', 'spoof', 'medical', 'violence', 'racy']
                                    if getattr(safe_search, attr).name not in ['VERY_UNLIKELY', 'UNLIKELY']]
@@ -153,21 +131,21 @@ def upload_file():
                 description += f"\nContent advisory: {', '.join(safe_search_results)}"
 
             # Add web entities
-            if web_detection.web_entities:
-                web_entities = [entity.description for entity in web_detection.web_entities[:3]]
+            if response.web_detection.web_entities:
+                web_entities = [entity.description for entity in response.web_detection.web_entities[:3]]
                 description += f"\nRelated web entities: {', '.join(web_entities)}"
 
             # Add object detection information
-            if objects:
-                object_names = [obj.name for obj in objects[:5]]
+            if response.localized_object_annotations:
+                object_names = [obj.name for obj in response.localized_object_annotations[:5]]
                 description += f"\nDetected objects: {', '.join(object_names)}"
 
             # Add facial recognition information
-            if faces:
-                face_count = len(faces)
+            if response.face_annotations:
+                face_count = len(response.face_annotations)
                 description += f"\nDetected {face_count} face{'s' if face_count > 1 else ''}"
                 if face_count > 0:
-                    emotions = [emotion for face in faces for emotion, likelihood in [
+                    emotions = [emotion for face in response.face_annotations for emotion, likelihood in [
                         ('joy', face.joy_likelihood),
                         ('sorrow', face.sorrow_likelihood),
                         ('anger', face.anger_likelihood),
