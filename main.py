@@ -2,7 +2,7 @@ import os
 os.environ['FLASK_APP'] = 'main.py'
 
 import uuid
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_file, abort
 from werkzeug.utils import secure_filename
 from google.cloud import vision
 import io
@@ -120,7 +120,7 @@ def upload_file():
 
         # Add safe search information
         safe_search_results = [f"{attr}: {getattr(safe_search, attr).name}"
-                               for attr in ['adult', 'medical', 'violent', 'racy']
+                               for attr in ['adult', 'spoof', 'medical', 'violence', 'racy']
                                if getattr(safe_search, attr).name not in ['VERY_UNLIKELY', 'UNLIKELY']]
         if safe_search_results:
             description += f"\nContent advisory: {', '.join(safe_search_results)}"
