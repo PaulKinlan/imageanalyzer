@@ -44,18 +44,27 @@ function handleFiles(event) {
     const files = event.target ? event.target.files : event;
     [...files].forEach((file, index) => {
         uploadFile(file, index);
-        previewFile(file);
+        previewFile(file, index);
     });
 }
 
-function previewFile(file) {
+function previewFile(file, index) {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onloadend = function() {
+        const container = document.createElement('div');
+        container.classList.add('image-container', 'mb-4', 'p-4', 'bg-white', 'rounded', 'shadow');
+        
         const img = document.createElement('img');
         img.src = reader.result;
-        img.classList.add('w-full', 'h-32', 'object-cover', 'rounded');
-        gallery.appendChild(img);
+        img.classList.add('w-full', 'h-32', 'object-cover', 'rounded', 'mb-2');
+        
+        const analysisDiv = document.createElement('div');
+        analysisDiv.classList.add('analysis-result', 'text-sm');
+        
+        container.appendChild(img);
+        container.appendChild(analysisDiv);
+        gallery.appendChild(container);
     }
 }
 
@@ -102,14 +111,11 @@ function uploadFile(file, index) {
 }
 
 function displayResult(fileName, analysisResult, index) {
-    const resultDiv = document.createElement('div');
-    resultDiv.classList.add('mt-4', 'p-4', 'bg-gray-100', 'rounded');
-    resultDiv.innerHTML = `
-        <h3 class="font-bold">Image ${index + 1}: ${fileName}</h3>
-        <p>${analysisResult}</p>
-    `;
-    results.appendChild(resultDiv);
-    error.classList.add('hidden');
+    const containers = document.querySelectorAll('.image-container');
+    if (containers[index]) {
+        const analysisDiv = containers[index].querySelector('.analysis-result');
+        analysisDiv.innerHTML = `<p class="font-bold">${fileName}</p><p>${analysisResult}</p>`;
+    }
 }
 
 function showError(message) {

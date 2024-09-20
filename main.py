@@ -113,7 +113,7 @@ def upload_file():
             web_detection = web_response.web_detection
 
             # Generate a comprehensive description
-            description = f"Image {int(index) + 1}: " + ", ".join([label.description for label in labels[:5]])
+            description = f"This image contains: {', '.join([label.description for label in labels[:5]])}"
             
             # Add color information
             if properties.dominant_colors:
