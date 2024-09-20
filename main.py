@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+import uuid
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_file
 from werkzeug.utils import secure_filename
 from google.cloud import vision
 import io
@@ -33,9 +34,6 @@ migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Ensure the upload folder exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
 # Initialize Google Cloud Vision client
 vision_client = vision.ImageAnnotatorClient()
 
@@ -54,8 +52,8 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 class Analysis(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(255), nullable=False)
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    image_data = db.Column(db.LargeBinary, nullable=False)
     description = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('analyses', lazy=True))
@@ -83,23 +81,50 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
     
     if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
+        file_data = file.read()
         
         # Analyze the image
-        with io.open(filepath, 'rb') as image_file:
-            content = image_file.read()
+        image = vision.Image(content=file_data)
         
-        image = vision.Image(content=content)
-        response = vision_client.label_detection(image=image)
-        labels = response.label_annotations
+        # Perform label detection
+        label_response = vision_client.label_detection(image=image)
+        labels = label_response.label_annotations
 
-        # Generate a description based on labels
+        # Perform image properties analysis
+        properties_response = vision_client.image_properties(image=image)
+        properties = properties_response.image_properties_annotation
+
+        # Perform safe search detection
+        safe_search_response = vision_client.safe_search_detection(image=image)
+        safe_search = safe_search_response.safe_search_annotation
+
+        # Perform web detection
+        web_response = vision_client.web_detection(image=image)
+        web_detection = web_response.web_detection
+
+        # Generate a comprehensive description
         description = "This image contains: " + ", ".join([label.description for label in labels[:5]])
         
+        # Add color information
+        if properties.dominant_colors:
+            colors = [f"rgb({int(color.color.red)},{int(color.color.green)},{int(color.color.blue)})" 
+                      for color in properties.dominant_colors.colors[:3]]
+            description += f"\nDominant colors: {', '.join(colors)}"
+
+        # Add safe search information
+        safe_search_results = [f"{attr}: {getattr(safe_search, attr).name}"
+                               for attr in ['adult', 'medical', 'violent', 'racy']
+                               if getattr(safe_search, attr).name not in ['VERY_UNLIKELY', 'UNLIKELY']]
+        if safe_search_results:
+            description += f"\nContent advisory: {', '.join(safe_search_results)}"
+
+        # Add web entities
+        if web_detection.web_entities:
+            web_entities = [entity.description for entity in web_detection.web_entities[:3]]
+            description += f"\nRelated web entities: {', '.join(web_entities)}"
+        
         # Save analysis to database
-        analysis = Analysis(filename=filename, description=description, user_id=current_user.id)
+        analysis = Analysis(image_data=file_data, description=description, user_id=current_user.id)
         db.session.add(analysis)
         db.session.commit()
         
@@ -171,6 +196,14 @@ def logout():
 def history():
     analyses = Analysis.query.filter_by(user_id=current_user.id).all()
     return render_template('history.html', analyses=analyses)
+
+@app.route('/image/<image_id>')
+@login_required
+def serve_image(image_id):
+    analysis = Analysis.query.get_or_404(image_id)
+    if analysis.user_id != current_user.id:
+        abort(403)  # Forbidden
+    return send_file(io.BytesIO(analysis.image_data), mimetype='image/jpeg')
 
 def init_db():
     with app.app_context():

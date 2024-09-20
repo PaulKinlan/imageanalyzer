@@ -23,6 +23,14 @@ args = "Create and Apply Migration"
 task = "workflow.run"
 args = "Set FLASK_APP and Run Migrations"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Generate Migration"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Apply Migration"
+
 [[workflows.workflow]]
 name = "Start Flask Server"
 author = "agent"
@@ -56,6 +64,28 @@ agentRequireRestartOnSave = false
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "export FLASK_APP=main.py && flask db init && flask db migrate -m 'Increase password_hash column size' && flask db upgrade"
+
+[[workflows.workflow]]
+name = "Generate Migration"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "flask db migrate -m 'Update Analysis model'"
+
+[[workflows.workflow]]
+name = "Apply Migration"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "flask db upgrade"
 
 [deployment]
 run = ["sh", "-c", "python main.py"]

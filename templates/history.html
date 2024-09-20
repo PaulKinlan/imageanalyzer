@@ -1,30 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analysis History - Image Analysis App</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-8 text-center">Analysis History</h1>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {% for analysis in analyses %}
-            <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                <img src="{{ url_for('static', filename='uploads/' + analysis.filename) }}" alt="Analyzed image" class="w-full h-48 object-cover">
-                <div class="p-4">
-                    <h2 class="text-xl font-semibold mb-2">{{ analysis.filename }}</h2>
-                    <p class="text-gray-600">{{ analysis.description }}</p>
-                </div>
+{% extends "base.html" %}
+
+{% block title %}Analysis History - Image Analysis App{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8 text-center">Analysis History</h1>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for analysis in analyses %}
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <img src="{{ url_for('serve_image', image_id=analysis.id) }}" alt="Analyzed image" class="w-full h-48 object-cover">
+            <div class="p-4">
+                <p class="text-gray-600">{{ analysis.description }}</p>
             </div>
-            {% endfor %}
         </div>
-        <div class="mt-8 text-center">
-            <a href="{{ url_for('index') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                Back to Home
-            </a>
-        </div>
+        {% endfor %}
     </div>
-</body>
-</html>
+    <div class="mt-8 text-center">
+        <a href="{{ url_for('index') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            Back to Home
+        </a>
+    </div>
+</div>
+{% endblock %}
