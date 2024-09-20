@@ -117,7 +117,17 @@ def generate_caption(image_content):
     
     if response.status_code == 200:
         result = response.json()
-        return result['predictions'][0]['caption']
+        # Print the entire response for debugging
+        print("API Response:", result)
+        # Check if 'predictions' is in the result and is a list
+        if 'predictions' in result and isinstance(result['predictions'], list) and len(result['predictions']) > 0:
+            # Check if 'caption' is in the first prediction
+            if 'caption' in result['predictions'][0]:
+                return result['predictions'][0]['caption']
+            else:
+                raise Exception("No 'caption' found in the API response")
+        else:
+            raise Exception("Unexpected response structure from Imagen API")
     else:
         raise Exception(f"Error calling Imagen API: {response.text}")
 
@@ -207,7 +217,7 @@ def upload_file():
             return jsonify({'description': description}), 200
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Error during file upload and analysis: {str(e)}")
+            logger.error(f"Error during file upload and analysis: {str(e)}", exc_info=True)
             return jsonify({'error': 'An error occurred during file upload and analysis'}), 500
     
     return jsonify({'error': 'Invalid file type'}), 400
