@@ -84,6 +84,7 @@ def upload_file():
         return jsonify({'error': 'No file part'}), 400
     
     file = request.files['file']
+    index = request.form.get('index', 0)
     
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
@@ -112,7 +113,7 @@ def upload_file():
             web_detection = web_response.web_detection
 
             # Generate a comprehensive description
-            description = "This image contains: " + ", ".join([label.description for label in labels[:5]])
+            description = f"Image {int(index) + 1}: " + ", ".join([label.description for label in labels[:5]])
             
             # Add color information
             if properties.dominant_colors:

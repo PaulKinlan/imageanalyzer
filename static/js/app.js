@@ -40,10 +40,12 @@ function handleDrop(e) {
     handleFiles(files);
 }
 
-function handleFiles(files) {
-    files = [...files];
-    files.forEach(uploadFile);
-    files.forEach(previewFile);
+function handleFiles(event) {
+    const files = event.target ? event.target.files : event;
+    [...files].forEach((file, index) => {
+        uploadFile(file, index);
+        previewFile(file);
+    });
 }
 
 function previewFile(file) {
@@ -57,7 +59,12 @@ function previewFile(file) {
     }
 }
 
-function uploadFile(file) {
+function uploadFile(file, index) {
+    if (index >= 10) {
+        showError('You can only upload up to 10 images at a time.');
+        return;
+    }
+
     if (!file.type.startsWith('image/')) {
         showError('Please upload only image files.');
         return;
@@ -65,6 +72,7 @@ function uploadFile(file) {
 
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('index', index);
 
     fetch('/upload', {
         method: 'POST',
@@ -80,7 +88,7 @@ function uploadFile(file) {
         if (data.error) {
             showError(data.error);
         } else {
-            displayResult(file.name, data.description);
+            displayResult(file.name, data.description, index);
         }
     })
     .catch(error => {
@@ -93,11 +101,11 @@ function uploadFile(file) {
     });
 }
 
-function displayResult(fileName, analysisResult) {
+function displayResult(fileName, analysisResult, index) {
     const resultDiv = document.createElement('div');
     resultDiv.classList.add('mt-4', 'p-4', 'bg-gray-100', 'rounded');
     resultDiv.innerHTML = `
-        <h3 class="font-bold">${fileName}</h3>
+        <h3 class="font-bold">Image ${index + 1}: ${fileName}</h3>
         <p>${analysisResult}</p>
     `;
     results.appendChild(resultDiv);
