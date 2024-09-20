@@ -119,6 +119,7 @@ args = "export FLASK_APP=main.py && flask db migrate -m 'Update Analysis model w
 
 [deployment]
 run = ["sh", "-c", "python main.py"]
+deploymentTarget = "cloudrun"
 
 [[ports]]
 localPort = 5000
