@@ -9,7 +9,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.config.from_object('config')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+
+# PostgreSQL configuration
+db_user = os.environ.get('PGUSER')
+db_password = os.environ.get('PGPASSWORD')
+db_host = os.environ.get('PGHOST')
+db_port = os.environ.get('PGPORT')
+db_name = os.environ.get('PGDATABASE')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}'
 app.config['SECRET_KEY'] = os.urandom(24)
 
 db = SQLAlchemy(app)
@@ -97,14 +105,18 @@ def register():
         email = request.form.get('email')
         password = request.form.get('password')
         
+        if not username or not email or not password:
+            flash('All fields are required.', 'error')
+            return redirect(url_for('register'))
+        
         user = User.query.filter_by(username=username).first()
         if user:
-            flash('Username already exists')
+            flash('Username already exists.', 'error')
             return redirect(url_for('register'))
         
         user = User.query.filter_by(email=email).first()
         if user:
-            flash('Email already exists')
+            flash('Email already exists.', 'error')
             return redirect(url_for('register'))
         
         new_user = User(username=username, email=email)
@@ -112,7 +124,7 @@ def register():
         db.session.add(new_user)
         db.session.commit()
         
-        flash('Registration successful')
+        flash('Registration successful. Please log in.', 'success')
         return redirect(url_for('login'))
     
     return render_template('register.html')
@@ -126,9 +138,10 @@ def login():
         
         if user and user.check_password(password):
             login_user(user)
+            flash('Logged in successfully.', 'success')
             return redirect(url_for('index'))
         else:
-            flash('Invalid username or password')
+            flash('Invalid username or password.', 'error')
     
     return render_template('login.html')
 
@@ -136,6 +149,7 @@ def login():
 @login_required
 def logout():
     logout_user()
+    flash('Logged out successfully.', 'success')
     return redirect(url_for('index'))
 
 @app.route('/history')
