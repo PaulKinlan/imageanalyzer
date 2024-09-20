@@ -52,7 +52,7 @@ agentRequireRestartOnSave = false
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "flask db upgrade"
+args = "export FLASK_APP=main.py && flask db migrate -m 'Add image_data column to analysis table' && flask db upgrade"
 
 [[workflows.workflow]]
 name = "Set FLASK_APP and Run Migrations"
