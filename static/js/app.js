@@ -1,8 +1,7 @@
 const dropArea = document.getElementById('drop-area');
 const fileElem = document.getElementById('fileElem');
 const gallery = document.getElementById('gallery');
-const result = document.getElementById('result');
-const description = document.getElementById('description');
+const results = document.getElementById('results');
 const error = document.getElementById('error');
 
 if (dropArea) {
@@ -42,16 +41,25 @@ function handleDrop(e) {
 }
 
 function handleFiles(files) {
-    if (files instanceof FileList) {
-        ([...files]).forEach(uploadFile);
-    } else if (files.target && files.target.files) {
-        ([...files.target.files]).forEach(uploadFile);
+    files = [...files];
+    files.forEach(uploadFile);
+    files.forEach(previewFile);
+}
+
+function previewFile(file) {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = function() {
+        const img = document.createElement('img');
+        img.src = reader.result;
+        img.classList.add('w-full', 'h-32', 'object-cover', 'rounded');
+        gallery.appendChild(img);
     }
 }
 
 function uploadFile(file) {
     if (!file.type.startsWith('image/')) {
-        showError('Please upload an image file.');
+        showError('Please upload only image files.');
         return;
     }
 
@@ -72,7 +80,7 @@ function uploadFile(file) {
         if (data.error) {
             showError(data.error);
         } else {
-            displayResult(file, data.description);
+            displayResult(file.name, data.description);
         }
     })
     .catch(error => {
@@ -85,20 +93,18 @@ function uploadFile(file) {
     });
 }
 
-function displayResult(file, analysisResult) {
-    gallery.innerHTML = '';
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(file);
-    img.onload = () => URL.revokeObjectURL(img.src);
-    gallery.appendChild(img);
-
-    description.textContent = analysisResult;
-    result.classList.remove('hidden');
+function displayResult(fileName, analysisResult) {
+    const resultDiv = document.createElement('div');
+    resultDiv.classList.add('mt-4', 'p-4', 'bg-gray-100', 'rounded');
+    resultDiv.innerHTML = `
+        <h3 class="font-bold">${fileName}</h3>
+        <p>${analysisResult}</p>
+    `;
+    results.appendChild(resultDiv);
     error.classList.add('hidden');
 }
 
 function showError(message) {
     error.textContent = message;
     error.classList.remove('hidden');
-    result.classList.add('hidden');
 }

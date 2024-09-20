@@ -25,20 +25,17 @@
     <div class="container mx-auto px-4 py-8">
         {% if current_user.is_authenticated %}
         <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md mx-auto">
-            <h2 class="text-2xl font-bold mb-4 text-center">Upload an Image</h2>
+            <h2 class="text-2xl font-bold mb-4 text-center">Upload Images</h2>
             <div id="drop-area" class="border-dashed border-2 border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors">
-                <p class="mb-2">Drag & Drop your image here</p>
+                <p class="mb-2">Drag & Drop your images here</p>
                 <p>or</p>
                 <label for="fileElem" class="block mt-2 bg-blue-500 text-white py-2 px-4 rounded cursor-pointer hover:bg-blue-600 transition-colors">
-                    Select an image
+                    Select images
                 </label>
-                <input type="file" id="fileElem" accept="image/*" class="hidden">
+                <input type="file" id="fileElem" accept="image/*" multiple class="hidden">
             </div>
-            <div id="gallery" class="mt-4"></div>
-            <div id="result" class="mt-4 text-center hidden">
-                <h2 class="text-xl font-semibold mb-2">Analysis Result:</h2>
-                <p id="description" class="text-gray-700"></p>
-            </div>
+            <div id="gallery" class="mt-4 grid grid-cols-2 gap-4"></div>
+            <div id="results" class="mt-4 text-center"></div>
             <div id="error" class="mt-4 text-center text-red-500 hidden"></div>
         </div>
         {% else %}
