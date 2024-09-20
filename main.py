@@ -1,4 +1,6 @@
 import os
+os.environ['FLASK_APP'] = 'main.py'
+
 import uuid
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_file
 from werkzeug.utils import secure_filename
@@ -10,6 +12,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
 from flask_migrate import Migrate
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config.from_object('config')
@@ -163,7 +170,8 @@ def register():
             return redirect(url_for('login'))
         except Exception as e:
             db.session.rollback()
-            flash(f'An error occurred during registration: {str(e)}', 'error')
+            logger.error(f'An error occurred during registration: {str(e)}')
+            flash(f'An error occurred during registration. Please try again.', 'error')
             return redirect(url_for('register'))
     
     return render_template('register.html')
@@ -173,13 +181,23 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        
+        logger.debug(f'Login attempt for username: {username}')
+        
         user = User.query.filter_by(username=username).first()
         
-        if user and user.check_password(password):
-            login_user(user)
-            flash('Logged in successfully.', 'success')
-            return redirect(url_for('index'))
+        if user:
+            logger.debug(f'User found: {user.username}')
+            if user.check_password(password):
+                login_user(user)
+                logger.info(f'User {username} logged in successfully')
+                flash('Logged in successfully.', 'success')
+                return redirect(url_for('index'))
+            else:
+                logger.warning(f'Invalid password for user: {username}')
+                flash('Invalid username or password.', 'error')
         else:
+            logger.warning(f'No user found with username: {username}')
             flash('Invalid username or password.', 'error')
     
     return render_template('login.html')
@@ -208,11 +226,11 @@ def serve_image(image_id):
 def init_db():
     with app.app_context():
         db.create_all()
-        print("Database tables created.")
+        logger.info("Database tables created.")
 
 if __name__ == '__main__':
     try:
         init_db()
         app.run(host='0.0.0.0', port=5000)
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
+        logger.error(f"An error occurred: {str(e)}")
