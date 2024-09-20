@@ -35,6 +35,10 @@ args = "Apply Migration"
 task = "workflow.run"
 args = "Apply Updated Migration"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Update Database Schema"
+
 [[workflows.workflow]]
 name = "Start Flask Server"
 author = "agent"
@@ -101,6 +105,17 @@ agentRequireRestartOnSave = false
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "export FLASK_APP=main.py && flask db upgrade"
+
+[[workflows.workflow]]
+name = "Update Database Schema"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "export FLASK_APP=main.py && flask db migrate -m 'Update Analysis model with UUID id' && flask db upgrade"
 
 [deployment]
 run = ["sh", "-c", "python main.py"]
