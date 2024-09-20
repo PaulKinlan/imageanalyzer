@@ -7,23 +7,48 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
-    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 class="text-2xl font-bold mb-4 text-center">Image Analysis App</h1>
-        <div id="drop-area" class="border-dashed border-2 border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors">
-            <p class="mb-2">Drag & Drop your image here</p>
-            <p>or</p>
-            <label for="fileElem" class="block mt-2 bg-blue-500 text-white py-2 px-4 rounded cursor-pointer hover:bg-blue-600 transition-colors">
-                Select an image
-            </label>
-            <input type="file" id="fileElem" accept="image/*" class="hidden">
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-md p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Image Analysis App</h1>
+            <div>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('history') }}" class="text-blue-500 hover:text-blue-700 mr-4">History</a>
+                <a href="{{ url_for('logout') }}" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Logout</a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2">Login</a>
+                <a href="{{ url_for('register') }}" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Register</a>
+                {% endif %}
+            </div>
         </div>
-        <div id="gallery" class="mt-4"></div>
-        <div id="result" class="mt-4 text-center hidden">
-            <h2 class="text-xl font-semibold mb-2">Analysis Result:</h2>
-            <p id="description" class="text-gray-700"></p>
+    </nav>
+    <div class="container mx-auto px-4 py-8">
+        {% if current_user.is_authenticated %}
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md mx-auto">
+            <h2 class="text-2xl font-bold mb-4 text-center">Upload an Image</h2>
+            <div id="drop-area" class="border-dashed border-2 border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors">
+                <p class="mb-2">Drag & Drop your image here</p>
+                <p>or</p>
+                <label for="fileElem" class="block mt-2 bg-blue-500 text-white py-2 px-4 rounded cursor-pointer hover:bg-blue-600 transition-colors">
+                    Select an image
+                </label>
+                <input type="file" id="fileElem" accept="image/*" class="hidden">
+            </div>
+            <div id="gallery" class="mt-4"></div>
+            <div id="result" class="mt-4 text-center hidden">
+                <h2 class="text-xl font-semibold mb-2">Analysis Result:</h2>
+                <p id="description" class="text-gray-700"></p>
+            </div>
+            <div id="error" class="mt-4 text-center text-red-500 hidden"></div>
         </div>
-        <div id="error" class="mt-4 text-center text-red-500 hidden"></div>
+        {% else %}
+        <div class="text-center">
+            <h2 class="text-2xl font-bold mb-4">Welcome to Image Analysis App</h2>
+            <p class="mb-4">Please login or register to start analyzing images.</p>
+            <a href="{{ url_for('login') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2">Login</a>
+            <a href="{{ url_for('register') }}" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Register</a>
+        </div>
+        {% endif %}
     </div>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

@@ -5,33 +5,35 @@ const result = document.getElementById('result');
 const description = document.getElementById('description');
 const error = document.getElementById('error');
 
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    dropArea.addEventListener(eventName, preventDefaults, false);
-});
+if (dropArea) {
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+    });
 
-function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight() {
+        dropArea.classList.add('highlight');
+    }
+
+    function unhighlight() {
+        dropArea.classList.remove('highlight');
+    }
+
+    dropArea.addEventListener('drop', handleDrop, false);
+    fileElem.addEventListener('change', handleFiles, false);
 }
-
-['dragenter', 'dragover'].forEach(eventName => {
-    dropArea.addEventListener(eventName, highlight, false);
-});
-
-['dragleave', 'drop'].forEach(eventName => {
-    dropArea.addEventListener(eventName, unhighlight, false);
-});
-
-function highlight() {
-    dropArea.classList.add('highlight');
-}
-
-function unhighlight() {
-    dropArea.classList.remove('highlight');
-}
-
-dropArea.addEventListener('drop', handleDrop, false);
-fileElem.addEventListener('change', handleFiles, false);
 
 function handleDrop(e) {
     const dt = e.dataTransfer;
@@ -60,7 +62,12 @@ function uploadFile(file) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.error) {
             showError(data.error);
@@ -70,7 +77,11 @@ function uploadFile(file) {
     })
     .catch(error => {
         console.error('Error:', error);
-        showError('An error occurred while uploading the image.');
+        if (error.message === 'Network response was not ok') {
+            showError('You need to be logged in to upload images.');
+        } else {
+            showError('An error occurred while uploading the image.');
+        }
     });
 }
 
