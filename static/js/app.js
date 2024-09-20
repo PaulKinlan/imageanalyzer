@@ -114,7 +114,17 @@ function displayResult(fileName, analysisResult, index) {
     const containers = document.querySelectorAll('.image-container');
     if (containers[index]) {
         const analysisDiv = containers[index].querySelector('.analysis-result');
-        analysisDiv.innerHTML = `<p class="font-bold">${fileName}</p><p>${analysisResult}</p>`;
+        
+        // Split the analysis result into sections
+        const sections = analysisResult.split('\n');
+        
+        // Create a formatted HTML string
+        let formattedResult = `<p class="font-bold">${fileName}</p>`;
+        sections.forEach(section => {
+            formattedResult += `<p>${section}</p>`;
+        });
+        
+        analysisDiv.innerHTML = formattedResult;
     }
 }
 

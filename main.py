@@ -112,6 +112,14 @@ def upload_file():
             web_response = vision_client.web_detection(image=image)
             web_detection = web_response.web_detection
 
+            # Perform object detection
+            object_response = vision_client.object_localization(image=image)
+            objects = object_response.localized_object_annotations
+
+            # Perform facial recognition
+            face_response = vision_client.face_detection(image=image)
+            faces = face_response.face_annotations
+
             # Generate a comprehensive description
             description = f"This image contains: {', '.join([label.description for label in labels[:5]])}"
             
@@ -132,6 +140,25 @@ def upload_file():
             if web_detection.web_entities:
                 web_entities = [entity.description for entity in web_detection.web_entities[:3]]
                 description += f"\nRelated web entities: {', '.join(web_entities)}"
+
+            # Add object detection information
+            if objects:
+                object_names = [obj.name for obj in objects[:5]]
+                description += f"\nDetected objects: {', '.join(object_names)}"
+
+            # Add facial recognition information
+            if faces:
+                face_count = len(faces)
+                description += f"\nDetected {face_count} face{'s' if face_count > 1 else ''}"
+                if face_count > 0:
+                    emotions = [emotion for face in faces for emotion, likelihood in [
+                        ('joy', face.joy_likelihood),
+                        ('sorrow', face.sorrow_likelihood),
+                        ('anger', face.anger_likelihood),
+                        ('surprise', face.surprise_likelihood)
+                    ] if likelihood >= vision.Likelihood.LIKELY]
+                    if emotions:
+                        description += f"\nDetected emotions: {', '.join(emotions)}"
             
             # Save analysis to database
             analysis = Analysis(image_data=file_data, description=description, user_id=current_user.id)
