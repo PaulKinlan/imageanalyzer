@@ -76,6 +76,44 @@ def allowed_file(filename):
 def index():
     return render_template('index.html')
 
+def generate_caption(response):
+    objects = response.localized_object_annotations
+    faces = response.face_annotations
+    labels = response.label_annotations
+
+    caption = []
+
+    # Describe main objects
+    if objects:
+        main_objects = [obj.name.lower() for obj in objects[:3]]
+        caption.append(f"A {'and '.join(main_objects)}")
+
+    # Describe people and expressions
+    if faces:
+        num_people = len(faces)
+        if num_people == 1:
+            caption.append("a person")
+        elif num_people > 1:
+            caption.append(f"{num_people} people")
+        
+        emotions = [emotion for face in faces for emotion, likelihood in [
+            ('smiling', face.joy_likelihood),
+            ('sad', face.sorrow_likelihood),
+            ('angry', face.anger_likelihood),
+            ('surprised', face.surprise_likelihood)
+        ] if likelihood >= vision.Likelihood.LIKELY]
+        
+        if emotions:
+            caption.append(f"who {'and '.join(emotions)}")
+
+    # Add context from labels
+    if labels:
+        context = [label.description.lower() for label in labels[:3] if label.description.lower() not in ' '.join(caption).lower()]
+        if context:
+            caption.append(f"in a {' and '.join(context)} setting")
+
+    return ' '.join(caption).capitalize() + '.'
+
 @app.route('/upload', methods=['POST'])
 @login_required
 def upload_file():
@@ -96,7 +134,7 @@ def upload_file():
             # Analyze the image
             image = vision.Image(content=file_data)
             
-            # Perform image captioning
+            # Perform image analysis
             image_context = vision.ImageContext(language_hints=['en'])
             response = vision_client.annotate_image({
                 'image': image,
@@ -109,8 +147,8 @@ def upload_file():
                 'image_context': image_context
             })
 
-            # Extract the caption (using label detection as a simple form of captioning)
-            caption = ', '.join([label.description for label in response.label_annotations[:3]])
+            # Generate caption
+            caption = generate_caption(response)
 
             # Generate a comprehensive description
             description = f"Image Caption: {caption}\n\n"
