@@ -89,54 +89,59 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
     
     if file and allowed_file(file.filename):
-        file_data = file.read()
-        
-        # Analyze the image
-        image = vision.Image(content=file_data)
-        
-        # Perform label detection
-        label_response = vision_client.label_detection(image=image)
-        labels = label_response.label_annotations
+        try:
+            file_data = file.read()
+            
+            # Analyze the image
+            image = vision.Image(content=file_data)
+            
+            # Perform label detection
+            label_response = vision_client.label_detection(image=image)
+            labels = label_response.label_annotations
 
-        # Perform image properties analysis
-        properties_response = vision_client.image_properties(image=image)
-        properties = properties_response.image_properties_annotation
+            # Perform image properties analysis
+            properties_response = vision_client.image_properties(image=image)
+            properties = properties_response.image_properties_annotation
 
-        # Perform safe search detection
-        safe_search_response = vision_client.safe_search_detection(image=image)
-        safe_search = safe_search_response.safe_search_annotation
+            # Perform safe search detection
+            safe_search_response = vision_client.safe_search_detection(image=image)
+            safe_search = safe_search_response.safe_search_annotation
 
-        # Perform web detection
-        web_response = vision_client.web_detection(image=image)
-        web_detection = web_response.web_detection
+            # Perform web detection
+            web_response = vision_client.web_detection(image=image)
+            web_detection = web_response.web_detection
 
-        # Generate a comprehensive description
-        description = "This image contains: " + ", ".join([label.description for label in labels[:5]])
-        
-        # Add color information
-        if properties.dominant_colors:
-            colors = [f"rgb({int(color.color.red)},{int(color.color.green)},{int(color.color.blue)})" 
-                      for color in properties.dominant_colors.colors[:3]]
-            description += f"\nDominant colors: {', '.join(colors)}"
+            # Generate a comprehensive description
+            description = "This image contains: " + ", ".join([label.description for label in labels[:5]])
+            
+            # Add color information
+            if properties.dominant_colors:
+                colors = [f"rgb({int(color.color.red)},{int(color.color.green)},{int(color.color.blue)})" 
+                          for color in properties.dominant_colors.colors[:3]]
+                description += f"\nDominant colors: {', '.join(colors)}"
 
-        # Add safe search information
-        safe_search_results = [f"{attr}: {getattr(safe_search, attr).name}"
-                               for attr in ['adult', 'spoof', 'medical', 'violence', 'racy']
-                               if getattr(safe_search, attr).name not in ['VERY_UNLIKELY', 'UNLIKELY']]
-        if safe_search_results:
-            description += f"\nContent advisory: {', '.join(safe_search_results)}"
+            # Add safe search information
+            safe_search_results = [f"{attr}: {getattr(safe_search, attr).name}"
+                                   for attr in ['adult', 'spoof', 'medical', 'violence', 'racy']
+                                   if getattr(safe_search, attr).name not in ['VERY_UNLIKELY', 'UNLIKELY']]
+            if safe_search_results:
+                description += f"\nContent advisory: {', '.join(safe_search_results)}"
 
-        # Add web entities
-        if web_detection.web_entities:
-            web_entities = [entity.description for entity in web_detection.web_entities[:3]]
-            description += f"\nRelated web entities: {', '.join(web_entities)}"
-        
-        # Save analysis to database
-        analysis = Analysis(image_data=file_data, description=description, user_id=current_user.id)
-        db.session.add(analysis)
-        db.session.commit()
-        
-        return jsonify({'description': description}), 200
+            # Add web entities
+            if web_detection.web_entities:
+                web_entities = [entity.description for entity in web_detection.web_entities[:3]]
+                description += f"\nRelated web entities: {', '.join(web_entities)}"
+            
+            # Save analysis to database
+            analysis = Analysis(image_data=file_data, description=description, user_id=current_user.id)
+            db.session.add(analysis)
+            db.session.commit()
+            
+            return jsonify({'description': description}), 200
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error during file upload and analysis: {str(e)}")
+            return jsonify({'error': 'An error occurred during file upload and analysis'}), 500
     
     return jsonify({'error': 'Invalid file type'}), 400
 
