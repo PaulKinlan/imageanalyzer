@@ -79,6 +79,7 @@ def index():
 @app.route('/upload', methods=['POST'])
 @login_required
 def upload_file():
+    logger.debug(f"Current user authenticated: {current_user.is_authenticated}")
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     
@@ -181,6 +182,7 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        remember = request.form.get('remember', False)
         
         logger.debug(f'Login attempt for username: {username}')
         
@@ -189,7 +191,7 @@ def login():
         if user:
             logger.debug(f'User found: {user.username}')
             if user.check_password(password):
-                login_user(user)
+                login_user(user, remember=remember)
                 logger.info(f'User {username} logged in successfully')
                 flash('Logged in successfully.', 'success')
                 return redirect(url_for('index'))
